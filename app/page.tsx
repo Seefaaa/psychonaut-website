@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata } from 'next';
 
 import { description, openGraph, title } from '@/app/metadata';
 import ServerList from '@/app/ui/server-list';

@@ -1,4 +1,4 @@
-import type { NextRequest } from "next/server";
+import type { NextRequest } from 'next/server';
 
 export type ServerStatus = {
 	connection_info: string;
@@ -23,6 +23,17 @@ export type Player = {
 	characters: [string, number][];
 	roletime: { job: string; minutes: number }[];
 	activity: [string, number][];
+	bans: {
+		bantime: string;
+		round_id: number | null;
+		roles: string | null;
+		expiration_time: string | null;
+		reason: string;
+		ckey: string | null;
+		a_ckey: string;
+		unbanned_datetime: string | null;
+		unbanned_ckey: string | null;
+	}[];
 } | null;
 
 export interface Middleware {

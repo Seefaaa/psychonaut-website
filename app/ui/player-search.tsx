@@ -33,7 +33,13 @@ export default function PlayerSearch() {
 		} else if (data) {
 			setAutocomplete(data);
 		}
-	}, [input, data])
+	}, [input, data]);
+
+	useEffect(() => {
+		setTimeout(() => {
+			inputRef.current?.focus();
+		}, 1);
+	}, []);
 
 	return (
 		<div className="flex-1 flex flex-col items-center gap-5">

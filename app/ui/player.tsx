@@ -1,12 +1,18 @@
 'use client';
 
+import { faAngleLeft, faAngleRight } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon as Icon } from '@fortawesome/react-fontawesome';
 import dayjs from 'dayjs';
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
+import useResize from '@/app/hooks/useResize';
 import { antagonist_roles, ghost_roles, non_roles, spawner_roles, trait_roles } from '@/app/lib/constants';
 import type { Player } from '@/app/lib/definitions';
+import { relativeTime } from '@/app/lib/time';
 import Button from '@/app/ui/button';
+import { NumberInput } from '@/app/ui/input';
 
 const all_roles = [...non_roles, ...trait_roles, ...spawner_roles, ...ghost_roles, ...antagonist_roles];
 
@@ -65,6 +71,17 @@ export default function Player({ player }: PlayerProps) {
 					</div>
 				)}
 			</div>
+			{/* Ban History */}
+			<div className="w-full flex flex-col items-center gap-3 sm:px-14 lg:px-48">
+				<span className="text-center text-3xl font-bold" title="Yalnızca kalıcı olan banlar gösteriliyor">Ban Geçmişi</span>
+				{player.bans.length ? (
+					<BanHistory bans={player.bans} />
+				) : (
+					<div className="flex justify-center py-6">
+						<span>Hiçbir kalıcı ban bulunamadı.</span>
+					</div>
+				)}
+			</div>
 		</div>
 	);
 }
@@ -105,14 +122,14 @@ function RoletimeChart({ roletime }: RoletimeChartProps) {
 		(!options.jobs && !all_roles.includes(job))
 	), []);
 
-	const roletimeFilter = useCallback(({ job }: { job: string; }) =>  filterJob(job, chartOptions), [filterJob, chartOptions]);
+	const roletimeFilter = useCallback(({ job }: { job: string }) => filterJob(job, chartOptions), [filterJob, chartOptions]);
 
 	const onCheckboxChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
 		const { name, checked } = event.target;
 
 		const trySet = (options: typeof chartOptions) => {
 			if (roletime.filter(({ job }) => filterJob(job, options)).length) {
-				setChartOptions(options)
+				setChartOptions(options);
 			}
 		};
 
@@ -138,7 +155,7 @@ function RoletimeChart({ roletime }: RoletimeChartProps) {
 		}
 	}, [roletime, filterJob, chartOptions]);
 
-	const filteredRoletime = useMemo(() => roletime.filter(roletimeFilter).map(({ job, minutes }) => ({ job, hours: Math.floor(minutes / 6) / 10 })), [roletime, roletimeFilter]);
+	const filteredRoletime = useMemo(() => roletime.filter(roletimeFilter).map(({ job, minutes }) => ({ job, hours: Math.floor(minutes / 6) / 10, })), [roletime, roletimeFilter]);
 	const visibleRoletime = useMemo(() => filteredRoletime.slice(0, maxBars), [filteredRoletime, maxBars]);
 
 	const onInputChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -147,7 +164,7 @@ function RoletimeChart({ roletime }: RoletimeChartProps) {
 		if (!value) {
 			event.target.value = '1';
 		} else if (value.startsWith('0') && Number(value) !== 0) {
-			event.target.value = String(Number(value))
+			event.target.value = String(Number(value));
 		}
 
 		value = Number(event.target.value);
@@ -160,45 +177,10 @@ function RoletimeChart({ roletime }: RoletimeChartProps) {
 		}
 	}, [filteredRoletime]);
 
-	useEffect(() => {
-		const resizeObserver = new ResizeObserver((entries) => {
-			const { width } = entries[0].contentRect;
-			setChartWidth(width);
-		});
-
-		resizeObserver.observe(chartRef.current!);
-
-		return () => {
-			resizeObserver.disconnect();
-		};
-	}, [chartRef]);
-
-	useEffect(() => {
-		const preventScroll = (e: Event) => {
-			if (inputRef.current && e.target === inputRef.current) {
-				e.preventDefault();
-				e.stopPropagation();
-
-				const deltaY = (e as WheelEvent).deltaY > 0 ? -1 : 1;
-				const value = Math.max(Number(inputRef.current.value) + deltaY, 1);
-
-				inputRef.current.value = String(value);
-
-				if (value >= 1 && value <= filteredRoletime.length) {
-					setMaxBars(value);
-					setInputInvalid(false);
-				} else {
-					setInputInvalid(true);
-				}
-			}
-		}
-
-		document.body.firstChild?.addEventListener('wheel', preventScroll, { passive: false });
-
-		return () => {
-			document.body.firstChild?.removeEventListener('wheel', preventScroll);
-		};
-	}, [filteredRoletime]);
+	useResize((entries) => {
+		const { width } = entries[0].contentRect;
+		setChartWidth(width);
+	}, chartRef);
 
 	useEffect(() => {
 		if (inputRef.current) {
@@ -210,13 +192,13 @@ function RoletimeChart({ roletime }: RoletimeChartProps) {
 				setInputInvalid(true);
 			}
 		}
-	}, [filteredRoletime])
+	}, [filteredRoletime]);
 
 	return (
 		<>
 			{/* responsive container shit does not work as documented so i needed a workaround */}
 			<ResponsiveContainer ref={chartRef} width="100%" height={400} style={{ position: 'relative', left: -22 }}>
-				<BarChart width={chartWidth} height={400} data={visibleRoletime} margin={{ top: 5, right: 30, left: 20, bottom: 5, }}>
+				<BarChart width={chartWidth} height={400} data={visibleRoletime} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
 					<XAxis dataKey="job" padding={{ left: 5, right: 5 }} />
 					<YAxis padding={{ bottom: 5 }} allowDecimals={false} />
 					<Tooltip cursor={{ opacity: 0.1 }} separator="" formatter={tooltipFormatter} contentStyle={{ background: 'transparent', border: 'none' }} itemStyle={{ color: 'rgb(100 116 139)' }} />
@@ -249,7 +231,7 @@ function RoletimeChart({ roletime }: RoletimeChartProps) {
 					<input name="other" type="checkbox" checked={chartOptions.nonRole} onChange={onCheckboxChange} />
 				</div>
 			</div>
-			<input className="bg-transparent outline-none text-center caret-white transition-opacity" style={{ opacity: inputInvalid ? 0.7 : 1 }} ref={inputRef} type="number" defaultValue={maxBars} min={1} max={999} onChange={onInputChange} />
+			<NumberInput ref={inputRef} className="pb-4" style={{ opacity: inputInvalid ? 0.7 : 1 }} title="Gösterilen sütun sayısı" onChange={onInputChange} defaultValue={maxBars} min={1} max={999} />
 		</>
 	);
 }
@@ -276,27 +258,91 @@ function ActivityChart({ activity }: ActivityChartProps) {
 		return days;
 	}, [activity]);
 
-	useEffect(() => {
-		const resizeObserver = new ResizeObserver((entries) => {
-			const { width } = entries[0].contentRect;
-			setChartWidth(width);
-		});
-
-		resizeObserver.observe(chartRef.current!);
-
-		return () => {
-			resizeObserver.disconnect();
-		};
-	}, [chartRef]);
+	useResize((entries) => {
+		const { width } = entries[0].contentRect;
+		setChartWidth(width);
+	}, chartRef);
 
 	return (
 		<ResponsiveContainer ref={chartRef} width="100%" height={400} style={{ position: 'relative', left: -22 }}>
-			<LineChart width={chartWidth} height={400} data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5, }}>
+			<LineChart width={chartWidth} height={400} data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
 				<XAxis dataKey="date" tick={false} padding={{ left: 5, right: 5 }} />
 				<YAxis padding={{ bottom: 5 }} domain={[0, 24]} />
 				<Tooltip cursor={{ opacity: 0.1 }} separator="" formatter={tooltipFormatter} contentStyle={{ background: 'transparent', border: 'none' }} itemStyle={{ color: 'rgb(100 116 139)' }} />
 				<Line type="monotone" dataKey="rounds" unit=" round" dot={false} />
 			</LineChart>
 		</ResponsiveContainer>
+	);
+}
+
+type BanHistoryProps = {
+	bans: NonNullablePlayer['bans'];
+};
+
+function BanHistory({ bans }: BanHistoryProps) {
+	const [currentBan, setCurrentBan] = useState(1);
+
+	const fitView = useCallback(() => {
+		setTimeout(() => {
+			document.getElementById('bans-navigation')?.scrollIntoView({
+				block: 'end',
+				inline: 'nearest',
+				behavior: 'smooth',
+			});
+		}, 1);
+	}, []);
+
+	const onInputChange = useCallback( (event: React.ChangeEvent<HTMLInputElement>) => {
+		const value = Number(event.target.value);
+
+		if (value >= 1 && value <= bans.length) {
+			setCurrentBan(value);
+			fitView();
+		}
+	}, [bans.length, fitView]);
+
+	const onPreviousClick = useCallback(() => {
+		setCurrentBan((current) => Math.max(current - 1, 1));
+		fitView();
+	}, [fitView]);
+
+	const onNextClick = useCallback(() => {
+		setCurrentBan((current) => Math.min(current + 1, bans.length));
+		fitView();
+	}, [bans.length, fitView]);
+
+	const ban = bans[bans.length - currentBan];
+
+	return (
+		<>
+			<div className="max-w-md flex flex-col items-center gap-2 p-4 [&>span:nth-child(odd)]:text-gray-500">
+				<span>Round</span>
+				<span>{ban.round_id ?? '—'}</span>
+				<span>Tarih</span>
+				<span title={`${relativeTime(ban.bantime, undefined)} önce`}>{ban.bantime}</span>
+				<span>Süre</span>
+				<span>{ban.expiration_time ? relativeTime(ban.bantime, ban.expiration_time) : 'Kalıcı'}</span>
+				<span>Admin</span>
+				<span><Link href={`/players/${ban.a_ckey}`}>{ban.a_ckey}</Link></span>
+				<span>Kaldırıldığı Tarih</span>
+				{ban.unbanned_datetime ? <span title={`${relativeTime(ban.bantime, ban.unbanned_datetime)} sonra`}>{ban.unbanned_datetime}</span> : <span>—</span>}
+				<span>Kaldıran Admin</span>
+				<span>{ban.unbanned_ckey ? <Link href={`/players/${ban.unbanned_ckey}`}>{ban.unbanned_ckey}</Link> : '—'}</span>
+				<span>Roller</span>
+				<span className="text-center">{ban.roles ?? '—'}</span>
+				<span>Sebep</span>
+				<span className="text-center">{ban.reason}</span>
+			</div>
+			<div className="[&>span]:cursor-pointer [&>span]:px-2">
+				<span onClick={onPreviousClick}><Icon icon={faAngleLeft} /></span>
+				<div className="inline-flex flex-row items-center">
+					<NumberInput value={currentBan} min={1} max={bans.length} onChange={onInputChange} />
+					<span className="cursor-default">/</span>
+					<NumberInput value={bans.length} disabled min={1} max={bans.length} />
+				</div>
+				<span onClick={onNextClick}><Icon icon={faAngleRight} /></span>
+				<div id="bans-navigation" className="relative top-6"></div>
+			</div>
+		</>
 	);
 }
